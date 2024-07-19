@@ -1,25 +1,72 @@
 from copy import deepcopy
+from enum import StrEnum
 from typing import Self, Iterator
 
 from src.exceptions import DeadEndException
 
+MAX_MOVE_IN_THE_SAME_DIRECTION = 3
+
+
+class Direction(StrEnum):
+    X_PLUS = ">"
+    X_MINUS = "<"
+    Y_PLUS = "v"
+    Y_MINUS = "^"
+
+    def inverse(self) -> Self:
+        match self:
+            case self.X_PLUS:
+                return self.X_MINUS
+            case self.X_MINUS:
+                return self.X_PLUS
+            case self.Y_PLUS:
+                return self.Y_MINUS
+            case self.Y_MINUS:
+                return self.Y_PLUS
+
 
 class PathElement:
-    def __init__(self, x: int, y: int):
+    def __init__(self, x: int, y: int, previous_directions=None):
+        """directions are from oldest to newest"""
         self.position = (x, y)
+        self.previous_directions = previous_directions or []
+        self.previous_directions = self.previous_directions[-MAX_MOVE_IN_THE_SAME_DIRECTION:]
 
     def __eq__(self, other: Self):
-        return self.position == other.position
+        return self.position == other.position and self.previous_directions == other.previous_directions
 
     def __repr__(self):
         return repr(self.position)
+
+    @property
+    def debug_display(self):  # usefull in debugger
+        return repr(self) + "".join([str(direction) for direction in self.previous_directions])
 
 
 Path = list[PathElement]
 
 
 def quick_path(*arg):  # used in tests
-    return [PathElement(x, y) for (x, y) in arg]
+    path = []
+    previous_x = None
+    previous_y = None
+    previous_directions = []
+    for (x, y) in arg:
+        direction = None
+        if previous_x is not None and previous_x + 1 == x:
+            direction = Direction.X_PLUS
+        elif previous_x is not None and previous_x - 1 == x:
+            direction = Direction.X_MINUS
+        elif previous_y is not None and previous_y + 1 == y:
+            direction = Direction.Y_PLUS
+        elif previous_y is not None and previous_y - 1 == y:
+            direction = Direction.Y_MINUS
+        if direction:
+            previous_directions.append(direction)
+        path.append(PathElement(x, y, previous_directions=previous_directions))
+        previous_x = x
+        previous_y = y
+    return path
 
 
 class Map:
@@ -95,17 +142,31 @@ class Map:
         return min_heat_loss_path
 
 
+def path_element_excluded_directions(path_element: PathElement) -> set[Direction]:
+    excluded_directions = set()
+    previous_directions = path_element.previous_directions
+    if previous_directions:
+        excluded_directions.add(previous_directions[-1].inverse())
+    # we use the fact that PathElement truncate to this value
+    if len(previous_directions) == MAX_MOVE_IN_THE_SAME_DIRECTION:
+        if all(direction == previous_directions[0] for direction in previous_directions):
+            excluded_directions.add(previous_directions[0])
+    return excluded_directions
+
+
 def path_choices(map_: Map, path: Path) -> Iterator[PathElement]:
     current_path_element = path[-1]
+    excluded_direction = path_element_excluded_directions(current_path_element)
     (current_x, current_y) = current_path_element.position
-    if current_x > 0:
-        yield PathElement(current_x - 1, current_y)
-    if current_y > 0:
-        yield PathElement(current_x, current_y - 1)
-    if current_x + 1 < map_.width:
-        yield PathElement(current_x + 1, current_y)
-    if current_y + 1 < map_.height:
-        yield PathElement(current_x, current_y + 1)
+    previous_directions = current_path_element.previous_directions
+    if current_x > 0 and Direction.X_MINUS not in excluded_direction:
+        yield PathElement(current_x - 1, current_y, previous_directions=previous_directions + [Direction.X_MINUS])
+    if current_y > 0 and Direction.Y_MINUS not in excluded_direction:
+        yield PathElement(current_x, current_y - 1, previous_directions=previous_directions + [Direction.Y_MINUS])
+    if current_x + 1 < map_.width and Direction.X_PLUS not in excluded_direction:
+        yield PathElement(current_x + 1, current_y, previous_directions=previous_directions + [Direction.X_PLUS])
+    if current_y + 1 < map_.height and Direction.Y_PLUS not in excluded_direction:
+        yield PathElement(current_x, current_y + 1, previous_directions=previous_directions + [Direction.Y_PLUS])
 
 
 def compute_heat_loss(map_: Map, path: Path) -> int:
