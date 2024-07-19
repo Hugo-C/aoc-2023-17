@@ -1,0 +1,2 @@
+class DeadEndException(Exception):
+    pass
