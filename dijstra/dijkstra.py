@@ -1,5 +1,6 @@
 from typing import Self
 
+"""Warning, worst Dijkstra implementation ever written, this was just a warmup"""
 
 class Node:
     """Node of a non oriented graph"""
