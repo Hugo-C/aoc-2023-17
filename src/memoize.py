@@ -14,7 +14,7 @@ def memoize(func):
         cache = CACHE_PER_MAP[map_]
         if result := cache.get(start_path_element):
             if result == SEEN_BUT_NOT_COMPUTED:
-                raise DeadEndException()
+                raise DeadEndException()  # we would get in a loop
             else:
                 return result
         # Else
@@ -22,7 +22,8 @@ def memoize(func):
         try:
             result = func(*args, **kwargs)
         except DeadEndException:
-            del cache[start_path_element]  # we hitted a dead end further down the road, but it does not mean this one is a dead end ??
+            # clear SEEN_BUT_NOT_COMPUTED status on PathElement that hit a loop
+            del cache[start_path_element]
             raise
         else:
             cache[start_path_element] = result

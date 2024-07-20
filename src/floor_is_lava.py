@@ -1,6 +1,7 @@
 import sys
 from enum import StrEnum
 from typing import Self, Iterator
+from itertools import groupby
 
 from line_profiler import profile
 
@@ -150,6 +151,11 @@ class Map:
         return [start_path_element] + min_heat_loss_path
 
 
+def all_equal(list_to_check: list) -> bool:  # a bit faster than using all(x == l[0] for x in l)
+    g = groupby(list_to_check)
+    return next(g, True) and not next(g, False)
+
+
 def path_element_excluded_directions(path_element: PathElement) -> set[Direction]:
     excluded_directions = set()
     previous_directions = path_element.previous_directions
@@ -157,7 +163,7 @@ def path_element_excluded_directions(path_element: PathElement) -> set[Direction
         excluded_directions.add(previous_directions[-1].inverse())
     # we use the fact that PathElement truncate to this value
     if len(previous_directions) == MAX_MOVE_IN_THE_SAME_DIRECTION:
-        if all(direction == previous_directions[0] for direction in previous_directions):
+        if all_equal(previous_directions):
             excluded_directions.add(previous_directions[0])
     return excluded_directions
 
