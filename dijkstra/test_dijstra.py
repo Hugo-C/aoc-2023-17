@@ -1,7 +1,7 @@
 from hypothesis import given
 from hypothesis.strategies import composite, integers, lists
 
-from dijstra.dijkstra import dijkstra, Node
+from dijkstra.dijkstra import dijkstra, Node
 
 
 @composite
