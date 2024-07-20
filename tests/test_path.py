@@ -54,16 +54,16 @@ def test_resolve_rect_map(rect_map):
     assert result == expected_result, [path_element.debug_display for path_element in expected_result]
 
 
-# def test_resolve_with_no_more_than_3_blocks_in_the_same_direction():
-#     init = (
-#         "155\n"
-#         "155\n"
-#         "155\n"
-#         "155\n"
-#         "111"
-#     )
-#     map_ = Map(init)
-#     assert map_.resolve() == quick_path((0, 0), (0, 1), (0, 2), (1, 2), (1, 3), (2, 3))  # TODO missing line
+def test_resolve_with_no_more_than_3_blocks_in_the_same_direction():
+    init = (
+        "155\n"
+        "155\n"
+        "155\n"
+        "155\n"
+        "111"
+    )
+    map_ = Map(init)
+    assert map_.resolve() == quick_path((0, 0), (0, 1), (0, 2), (0, 3), (1, 3), (1, 4), (2, 4))
 
 
 def test_resolve_with_no_u_turn():

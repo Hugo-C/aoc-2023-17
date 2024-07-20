@@ -1,8 +1,8 @@
-from copy import deepcopy
 from enum import StrEnum
 from typing import Self, Iterator
 
 from src.exceptions import DeadEndException
+from src.memoize import memoize
 
 MAX_MOVE_IN_THE_SAME_DIRECTION = 3
 
@@ -34,6 +34,9 @@ class PathElement:
 
     def __eq__(self, other: Self):
         return self.position == other.position and self.previous_directions == other.previous_directions
+
+    def __hash__(self):
+        return hash(self.position)
 
     def __repr__(self):
         return repr(self.position)
@@ -108,38 +111,35 @@ class Map:
         return "\n".join(lines)
 
     def resolve(self) -> Path:
-        path = [PathElement(0, 0)]
+        start_path_element = PathElement(0, 0)
         if self.width == 1 and self.height == 1:
-            return path  # very special case
-        return self._resolve(path)
+            return [start_path_element]  # very special case
+        return self._resolve(start_path_element)
 
-    def _resolve(self, path: Path) -> Path:
+    @memoize
+    def _resolve(self, start_path_element: PathElement) -> Path:
         min_heat_loss_count = None
         min_heat_loss_path = None
-        for path_element in path_choices(self, path):
-            if path_element in path:
-                continue  # we already passed there
-            new_path = deepcopy(path)
-            new_path.append(path_element)
+        for path_element in path_choices(self, start_path_element):
             (x, y) = path_element.position
             if x == self.width - 1 and y == self.height - 1:
                 # we found a path to the end
-                return new_path
+                return [start_path_element, path_element]
 
             # else we have to go deeper
             try:
-                full_path = self._resolve(new_path)
+                path = self._resolve(path_element)
             except DeadEndException:
                 continue
             else:
-                heat_loss = compute_heat_loss(self, full_path)
+                heat_loss = compute_heat_loss(self, path)
                 if min_heat_loss_count is None or heat_loss < min_heat_loss_count:
                     min_heat_loss_count = heat_loss
-                    min_heat_loss_path = full_path
+                    min_heat_loss_path = path
 
         if not min_heat_loss_path:  # this is a dead end with no further choices
             raise DeadEndException()
-        return min_heat_loss_path
+        return [start_path_element] + min_heat_loss_path
 
 
 def path_element_excluded_directions(path_element: PathElement) -> set[Direction]:
@@ -154,11 +154,10 @@ def path_element_excluded_directions(path_element: PathElement) -> set[Direction
     return excluded_directions
 
 
-def path_choices(map_: Map, path: Path) -> Iterator[PathElement]:
-    current_path_element = path[-1]
-    excluded_direction = path_element_excluded_directions(current_path_element)
-    (current_x, current_y) = current_path_element.position
-    previous_directions = current_path_element.previous_directions
+def path_choices(map_: Map, path_element: PathElement) -> Iterator[PathElement]:
+    excluded_direction = path_element_excluded_directions(path_element)
+    (current_x, current_y) = path_element.position
+    previous_directions = path_element.previous_directions
     if current_x > 0 and Direction.X_MINUS not in excluded_direction:
         yield PathElement(current_x - 1, current_y, previous_directions=previous_directions + [Direction.X_MINUS])
     if current_y > 0 and Direction.Y_MINUS not in excluded_direction:
@@ -175,3 +174,16 @@ def compute_heat_loss(map_: Map, path: Path) -> int:
     for path_element in path:
         heat_loss += map_[path_element.position]
     return heat_loss
+
+
+if __name__ == '__main__':
+    init = (
+        "241\n"
+        "351\n"
+        "326"
+    )
+    rect_map = Map(init)
+    result = rect_map.resolve()
+    print(result)
+    print([path_element.debug_display for path_element in result])
+
