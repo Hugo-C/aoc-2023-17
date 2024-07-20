@@ -1,10 +1,17 @@
+import sys
 from enum import StrEnum
 from typing import Self, Iterator
+
+from line_profiler import profile
 
 from src.exceptions import DeadEndException
 from src.memoize import memoize
 
 MAX_MOVE_IN_THE_SAME_DIRECTION = 3
+
+# We need to increase the max recursion for big maps
+current_recursion_limit = sys.getrecursionlimit()
+sys.setrecursionlimit(max(current_recursion_limit, 10000))
 
 
 class Direction(StrEnum):
@@ -117,6 +124,7 @@ class Map:
         return self._resolve(start_path_element)
 
     @memoize
+    @profile
     def _resolve(self, start_path_element: PathElement) -> Path:
         min_heat_loss_count = None
         min_heat_loss_path = None
@@ -177,13 +185,27 @@ def compute_heat_loss(map_: Map, path: Path) -> int:
 
 
 if __name__ == '__main__':
+    # to run with profiler on, set LINE_PROFILE=1
     init = (
-        "241\n"
-        "351\n"
-        "326"
+        "2413432311323\n"
+        "3215453535623\n"
+        "3255245654254\n"
+        "3446585845452\n"
+        "4546657867536\n"
+        "1438598798454\n"
+        "4457876987766\n"
+        "3637877979653\n"
+        "4654967986887\n"
+        "4564679986453\n"
+        "1224686865563\n"
+        "2546548887735\n"
+        "4322674655533"
     )
-    rect_map = Map(init)
-    result = rect_map.resolve()
+    some_map = Map(init)
+    result = some_map.resolve()
+    print("result path:")
     print(result)
+    print("heat loss incurred:")
+    print(compute_heat_loss(some_map, result[1:]))  # starting block is not counted
+    print("result path in details:")
     print([path_element.debug_display for path_element in result])
-

@@ -1,7 +1,7 @@
 import pytest
 
 from src.exceptions import DeadEndException
-from src.floor_is_lava import Map, PathElement, quick_path, Direction
+from src.floor_is_lava import Map, PathElement, quick_path, Direction, compute_heat_loss
 
 
 def test_path_element_repr():
@@ -77,3 +77,9 @@ def test_resolve_with_no_u_turn():
     map_ = Map(init)
     with pytest.raises(DeadEndException):
         map_.resolve()
+
+
+def test_resolve_map_aoc_example(map_aoc_example):
+    result = map_aoc_example.resolve()
+    heat_loss = compute_heat_loss(map_aoc_example, result[1:])
+    assert heat_loss <= 102, [path_element.debug_display for path_element in result]
