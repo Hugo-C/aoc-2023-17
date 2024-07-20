@@ -19,8 +19,13 @@ def memoize(func):
                 return result
         # Else
         cache[start_path_element] = SEEN_BUT_NOT_COMPUTED
-        result = func(*args, **kwargs)
-        cache[start_path_element] = result
+        try:
+            result = func(*args, **kwargs)
+        except DeadEndException:
+            del cache[start_path_element]  # we hitted a dead end further down the road, but it does not mean this one is a dead end ??
+            raise
+        else:
+            cache[start_path_element] = result
         return result
 
     return wrapper
