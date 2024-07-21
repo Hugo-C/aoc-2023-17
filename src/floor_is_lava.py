@@ -119,17 +119,20 @@ class Map:
         return "\n".join(lines)
 
     def resolve(self) -> Path:
-        start_path_element = PathElement(0, 0)
+        start_path = [PathElement(0, 0)]
         if self.width == 1 and self.height == 1:
-            return [start_path_element]  # very special case
-        return self._resolve(start_path_element)
+            return start_path  # very special case
+        return self._resolve(start_path)
 
     @memoize
     @profile
-    def _resolve(self, start_path_element: PathElement) -> Path:
+    def _resolve(self, path: Path) -> Path:
+        start_path_element = path[-1]
         min_heat_loss_count = None
         min_heat_loss_path = None
         for path_element in path_choices(self, start_path_element):
+            if path_element.position in {existing_path_element.position for existing_path_element in path}:
+                continue  # We already have been there
             (x, y) = path_element.position
             if x == self.width - 1 and y == self.height - 1:
                 # we found a path to the end
@@ -137,14 +140,14 @@ class Map:
 
             # else we have to go deeper
             try:
-                path = self._resolve(path_element)
+                rest_of_the_path = self._resolve(path + [path_element])
             except DeadEndException:
                 continue
             else:
-                heat_loss = compute_heat_loss(self, path)
+                heat_loss = compute_heat_loss(self, rest_of_the_path)
                 if min_heat_loss_count is None or heat_loss < min_heat_loss_count:
                     min_heat_loss_count = heat_loss
-                    min_heat_loss_path = path
+                    min_heat_loss_path = rest_of_the_path
 
         if not min_heat_loss_path:  # this is a dead end with no further choices
             raise DeadEndException()
