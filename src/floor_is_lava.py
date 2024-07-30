@@ -12,7 +12,7 @@ MAX_MOVE_IN_THE_SAME_DIRECTION = 3
 
 # We need to increase the max recursion for big maps
 current_recursion_limit = sys.getrecursionlimit()
-sys.setrecursionlimit(max(current_recursion_limit, 10000))
+sys.setrecursionlimit(max(current_recursion_limit, 100_000))
 
 
 class Direction(StrEnum):
@@ -88,10 +88,10 @@ class Map:
     ↓  (0, 1) (1, 1)
     """
 
-    def __init__(self, input: str):
+    def __init__(self, text_input: str):
         # we assume all lines have the same number of city blocks
         self._map = []
-        for line_value in input.split("\n"):
+        for line_value in text_input.split("\n"):
             line = []
             for block_value in line_value:
                 line.append(int(block_value))
@@ -122,36 +122,37 @@ class Map:
         start_path = [PathElement(0, 0)]
         if self.width == 1 and self.height == 1:
             return start_path  # very special case
-        return self._resolve(start_path)
+        result_path, _result_heat_loss = self._resolve(start_path, seen_position={(0, 0)})
+        return result_path
 
     @memoize
     @profile
-    def _resolve(self, path: Path) -> Path:
+    def _resolve(self, path: Path, seen_position: set[tuple]) -> tuple[Path, int]:  # TODO merge path, seen_position and heat loss
         start_path_element = path[-1]
         min_heat_loss_count = None
         min_heat_loss_path = None
         for path_element in path_choices(self, start_path_element):
-            if path_element.position in {existing_path_element.position for existing_path_element in path}:
+            if path_element.position in seen_position:
                 continue  # We already have been there
             (x, y) = path_element.position
             if x == self.width - 1 and y == self.height - 1:
                 # we found a path to the end
-                return [start_path_element, path_element]
+                return [start_path_element, path_element], self[path_element.position]
 
             # else we have to go deeper
             try:
-                rest_of_the_path = self._resolve(path + [path_element])
+                rest_of_the_path, heat_loss = self._resolve(path + [path_element], seen_position | {path_element.position})
             except DeadEndException:
                 continue
             else:
-                heat_loss = compute_heat_loss(self, rest_of_the_path)
+                heat_loss += self[path_element.position]
                 if min_heat_loss_count is None or heat_loss < min_heat_loss_count:
                     min_heat_loss_count = heat_loss
                     min_heat_loss_path = rest_of_the_path
 
         if not min_heat_loss_path:  # this is a dead end with no further choices
             raise DeadEndException()
-        return [start_path_element] + min_heat_loss_path
+        return [start_path_element] + min_heat_loss_path, min_heat_loss_count
 
 
 def all_equal(list_to_check: list) -> bool:  # a bit faster than using all(x == l[0] for x in l)
@@ -211,10 +212,10 @@ if __name__ == '__main__':
         "4322674655533"
     )
     some_map = Map(init)
-    result = some_map.resolve()
+    result_path = some_map.resolve()
     print("result path:")
-    print(result)
+    print(result_path)
     print("heat loss incurred:")
-    print(compute_heat_loss(some_map, result[1:]))  # starting block is not counted
+    print(compute_heat_loss(some_map, result_path[1:]))  # starting block is not counted
     print("result path in details:")
-    print([path_element.debug_display for path_element in result])
+    print([path_element.debug_display for path_element in result_path])
