@@ -79,6 +79,27 @@ def test_resolve_with_no_u_turn():
         map_.resolve()
 
 
+def test_resolve_special_bug():
+    init = (
+        "36\n"
+        "54\n"
+        "66\n"
+        "53\n"
+        "87\n"
+        "53\n"
+        "63\n"
+        "35\n"
+        "33"
+    )
+    map_ = Map(init)
+    result = map_.resolve()
+    expected_path = quick_path((0, 0), (0, 1), (0, 2), (0, 3), (1, 3), (1, 4), (1, 5), (1, 6), (0, 6), (0, 7), (0, 8),
+                               (1, 8))
+    assert result == expected_path
+    assert compute_heat_loss(map_, expected_path) == compute_heat_loss(map_, result)
+    assert compute_heat_loss(map_, expected_path) == 50
+
+
 def test_resolve_map_aoc_example(map_aoc_example):
     result = map_aoc_example.resolve()
     heat_loss = compute_heat_loss(map_aoc_example, result[1:])
